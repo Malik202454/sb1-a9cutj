@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réservation de voitures pour éducateurs</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        form { margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Réservation de voitures pour éducateurs</h1>
+    
+    <form id="reservationForm">
+        <label for="educateur">Éducateur:</label>
+        <input type="text" id="educateur" required><br><br>
+        
+        <label for="vehicule">Véhicule:</label>
+        <select id="vehicule" required>
+            <option value="Voiture 1 (Rouge)">Voiture 1 (Rouge)</option>
+            <option value="Voiture 2 (Bleu)">Voiture 2 (Bleu)</option>
+            <option value="Voiture 3 (Orange)">Voiture 3 (Orange)</option>
+            <option value="Voiture 4 (Noir)">Voiture 4 (Noir)</option>
+        </select><br><br>
+        
+        <label for="date">Date:</label>
+        <input type="date" id="date" required><br><br>
+        
+        <label for="heureDebut">Heure de début:</label>
+        <input type="time" id="heureDebut" required><br><br>
+        
+        <label for="heureRetour">Heure de retour:</label>
+        <input type="time" id="heureRetour" required><br><br>
+        
+        <button type="submit">Réserver</button>
+    </form>
+
+    <h2>Réservations</h2>
+    <table id="reservationsTable">
+        <thead>
+            <tr>
+                <th>Éducateur</th>
+                <th>Véhicule</th>
+                <th>Date</th>
+                <th>Heure de Début</th>
+                <th>Heure de Retour</th>
+                <th>Détails</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Détails de la réservation</h2>
+            <p id="modalContent"></p>
+        </div>
+    </div>
+
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+
+    <script>
+        // Your web app's Firebase configuration
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+            // Remplacez ces valeurs par celles de votre projet Firebase
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Get a reference to the database service
+        const database = firebase.database();
+
+        function addReservation(event) {
+            event.preventDefault();
+            const reservation = {
+                educateur: document.getElementById('educateur').value,
+                vehicule: document.getElementById('vehicule').value,
+                date: document.getElementById('date').value,
+                heureDebut: document.getElementById('heureDebut').value,
+                heureRetour: document.getElementById('heureRetour').value
+            };
+            
+            // Push the new reservation to Firebase
+            database.ref('reservations').push(reservation);
+            
+            event.target.reset();
+        }
+
+        function updateTable(snapshot) {
+            const tbody = document.querySelector('#reservationsTable tbody');
+            tbody.innerHTML = '';
+            snapshot.forEach((childSnapshot) => {
+                const reservation = childSnapshot.val();
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${reservation.educateur}</td>
+                    <td>${reservation.vehicule}</td>
+                    <td>${reservation.date}</td>
+                    <td>${reservation.heureDebut}</td>
+                    <td>${reservation.heureRetour}</td>
+                    <td><button onclick="showDetails('${childSnapshot.key}')">Voir détails</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showDetails(key) {
+            database.ref('reservations/' + key).once('value').then((snapshot) => {
+                const reservation = snapshot.val();
+                const modalContent = document.getElementById('modalContent');
+                modalContent.innerHTML = `
+                    <p><strong>Éducateur:</strong> ${reservation.educateur}</p>
+                    <p><strong>Véhicule:</strong> ${reservation.vehicule}</p>
+                    <p><strong>Date:</strong> ${reservation.date}</p>
+                    <p><strong>Heure de début:</strong> ${reservation.heureDebut}</p>
+                    <p><strong>Heure de retour:</strong> ${reservation.heureRetour}</p>
+                `;
+                document.getElementById('detailsModal').style.display = 'block';
+            });
+        }
+
+        document.getElementById('reservationForm').addEventListener('submit', addReservation);
+        document.querySelector('.close').addEventListener('click', () => {
+            document.getElementById('detailsModal').style.display = 'none';
+        });
+
+        // Listen for changes in the reservations data
+        database.ref('reservations').on('value', updateTable);
+    </script>
+</body>
+</html>
